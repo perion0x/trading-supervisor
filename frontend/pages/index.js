@@ -1,52 +1,58 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 export default function Home() {
-  const [ticker, setTicker] = useState('');
+  const [ticker, setTicker] = useState('AAPL');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [chatMessages, setChatMessages] = useState([
+    { role: 'agent', content: 'Terminal.ai Analyst online. Market data stream active. How can I assist with your trading strategy today?', timestamp: new Date() }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const messagesEndRef = useRef(null);
 
   const API_URL = 'https://j0hz2ok0kb.execute-api.us-east-1.amazonaws.com/dev/analyze';
 
-  // Calculate price domain with 10% buffer
+  // Mock ticker data for the tape
+  const tickerTapeStocks = [
+    { symbol: 'GOOGL', price: 107.85, change: -0.33 },
+    { symbol: 'TSLA', price: 174.61, change: -3.48 },
+    { symbol: 'AMZN', price: 182.28, change: 2.35 },
+    { symbol: 'BTC-USD', price: 71336.81, change: 1.01 },
+    { symbol: 'ETH-USD', price: 3646.31, change: 2.28 },
+    { symbol: 'JPM', price: 195.87, change: 0.81 },
+    { symbol: 'AAPL', price: 173.82, change: 0.91 },
+  ];
+
   const getPriceDomain = (chartData) => {
     if (!chartData || chartData.length === 0) return ['auto', 'auto'];
-    
     const prices = chartData.map(d => d.price);
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     const buffer = (maxPrice - minPrice) * 0.1;
-    
-    return [
-      Math.floor(minPrice - buffer),
-      Math.ceil(maxPrice + buffer)
-    ];
+    return [Math.floor(minPrice - buffer), Math.ceil(maxPrice + buffer)];
   };
 
-  const analyzeTicker = async () => {
-    if (!ticker) return;
+  const analyzeTicker = async (symbol) => {
+    if (!symbol) return;
     
     setLoading(true);
     setError(null);
-    setResult(null);
 
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          inputText: `Analyze ${ticker} stock with comprehensive analysis including technical and sentiment data`
+          inputText: `Analyze ${symbol} stock with comprehensive analysis including technical and sentiment data`
         }),
       });
 
       const data = await response.json();
-      
-      // API Gateway returns data directly
       if (data.ticker) {
         setResult(data);
+        setTicker(symbol);
       } else {
         setError('Unexpected response format');
       }
@@ -57,197 +63,313 @@ export default function Home() {
     }
   };
 
+  const handleChatSubmit = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMessage = { role: 'user', content: chatInput, timestamp: new Date() };
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+
+    // Simulate agent response
+    setTimeout(() => {
+      const agentMessage = {
+        role: 'agent',
+        content: `Analyzing your query: "${chatInput}". Based on current market data, I recommend reviewing the technical indicators and sentiment analysis for ${ticker}.`,
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, agentMessage]);
+    }, 1000);
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  useEffect(() => {
+    analyzeTicker('AAPL');
+  }, []);
+
   return (
     <div style={styles.container}>
       {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.logo}>⚡ TERMINAL.AI</div>
-        <div style={styles.searchBar}>
-          <input
-            type="text"
-            placeholder="Search ticker..."
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === 'Enter' && analyzeTicker()}
-            style={styles.searchInput}
-          />
-          <button onClick={analyzeTicker} disabled={loading || !ticker} style={styles.searchButton}>
-            {loading ? '...' : '→'}
-          </button>
+      <header style={styles.header}>
+        <div style={styles.headerLeft}>
+          <div style={styles.logo}>⚡ TERMINAL.AI</div>
+        </div>
+        <div style={styles.headerCenter}>
+          <span style={styles.marketStatus}>
+            <span style={styles.statusDot}></span>
+            MARKET OPEN
+          </span>
+          <span style={styles.divider}>|</span>
+          <span style={styles.time}>{new Date().toLocaleTimeString()}</span>
+          <span style={styles.divider}>|</span>
+          <span style={styles.location}>NYC</span>
+        </div>
+        <div style={styles.headerRight}>
+          <div style={styles.userAvatar}>JD</div>
+        </div>
+      </header>
+
+      {/* Ticker Tape */}
+      <div style={styles.tickerTape}>
+        <div style={styles.tickerContent}>
+          {[...tickerTapeStocks, ...tickerTapeStocks, ...tickerTapeStocks].map((stock, idx) => (
+            <div key={idx} style={styles.tickerItem}>
+              <span style={styles.tickerSymbol}>{stock.symbol}</span>
+              <span style={{...styles.tickerPrice, color: stock.change >= 0 ? '#00ff88' : '#ff4444'}}>
+                {stock.price.toFixed(2)}
+              </span>
+              <span style={{...styles.tickerChange, color: stock.change >= 0 ? '#00ff88' : '#ff4444'}}>
+                {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)}%
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {error && (
-        <div style={styles.error}>
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {result && (
-        <div style={styles.mainContent}>
-          {/* Ticker Header */}
-          <div style={styles.tickerHeader}>
-            <div>
-              <div style={styles.tickerSymbol}>{result.ticker}</div>
-              <div style={styles.tickerPrice}>
-                ${result.technical_analysis?.current_price?.toFixed(2)}
-                <span style={{
-                  ...styles.priceChange,
-                  color: result.technical_analysis?.price_change_24h >= 0 ? '#00ff88' : '#ff4444'
-                }}>
-                  {result.technical_analysis?.price_change_24h >= 0 ? '+' : ''}
-                  ${result.technical_analysis?.price_change_24h?.toFixed(2)} 
-                  ({((result.technical_analysis?.price_change_24h / result.technical_analysis?.current_price) * 100).toFixed(2)}%)
-                </span>
+      {/* Main Content */}
+      <main style={styles.mainContent}>
+        {/* Center: Chart Area */}
+        <section style={styles.centerSection}>
+          {result && (
+            <>
+              {/* Stock Header */}
+              <div style={styles.stockHeader}>
+                <div>
+                  <div style={styles.stockTitle}>
+                    <h2 style={styles.stockSymbol}>{result.ticker}</h2>
+                    <input
+                      type="text"
+                      placeholder="Search ticker..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          analyzeTicker(e.target.value.toUpperCase());
+                        }
+                      }}
+                      style={styles.searchInput}
+                    />
+                  </div>
+                  <div style={styles.priceInfo}>
+                    <span style={styles.currentPrice}>
+                      ${result.technical_analysis?.current_price?.toFixed(2)}
+                    </span>
+                    <span style={{
+                      ...styles.priceChange,
+                      color: result.technical_analysis?.price_change_24h >= 0 ? '#00ff88' : '#ff4444'
+                    }}>
+                      {result.technical_analysis?.price_change_24h >= 0 ? '+' : ''}
+                      ${result.technical_analysis?.price_change_24h?.toFixed(2)} 
+                      ({((result.technical_analysis?.price_change_24h / result.technical_analysis?.current_price) * 100).toFixed(2)}%)
+                    </span>
+                  </div>
+                </div>
+                <div style={styles.actionButtons}>
+                  <button style={{...styles.actionBtn, backgroundColor: '#00ff88', color: '#000'}}>BUY</button>
+                  <button style={{...styles.actionBtn, backgroundColor: '#ff4444'}}>SELL</button>
+                </div>
               </div>
-            </div>
-            <div style={styles.actionButtons}>
-              <button style={{...styles.actionBtn, backgroundColor: '#00ff88', color: '#000'}}>BUY</button>
-              <button style={{...styles.actionBtn, backgroundColor: '#ff4444'}}>SELL</button>
-            </div>
-          </div>
 
-          {/* Charts */}
-          {result.technical_analysis?.chart_data && result.technical_analysis.chart_data.length > 0 && (
-            <div style={styles.chartContainer}>
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={result.technical_analysis.chart_data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{fontSize: 11, fill: '#666'}} 
-                    stroke="#333"
-                  />
-                  <YAxis 
-                    domain={getPriceDomain(result.technical_analysis.chart_data)}
-                    tick={{fontSize: 11, fill: '#666'}}
-                    stroke="#333"
-                    orientation="right"
-                  />
-                  <Tooltip 
-                    contentStyle={{backgroundColor: '#0a0a0a', border: '1px solid #333', borderRadius: '4px'}}
-                    labelStyle={{color: '#00ff88'}}
-                  />
-                  <Line type="monotone" dataKey="price" stroke="#00ff88" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-              
-              <ResponsiveContainer width="100%" height={150}>
-                <LineChart data={result.technical_analysis.chart_data}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{fontSize: 10, fill: '#666'}} 
-                    stroke="#333"
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis 
-                    domain={[0, 100]} 
-                    tick={{fontSize: 11, fill: '#666'}}
-                    stroke="#333"
-                    orientation="right"
-                  />
-                  <Tooltip 
-                    contentStyle={{backgroundColor: '#0a0a0a', border: '1px solid #333', borderRadius: '4px'}}
-                    labelStyle={{color: '#ffaa00'}}
-                  />
-                  <Line type="monotone" dataKey="rsi" stroke="#ffaa00" strokeWidth={2} dot={false} />
-                  <ReferenceLine y={70} stroke="#ff4444" strokeDasharray="3 3" />
-                  <ReferenceLine y={30} stroke="#00ff88" strokeDasharray="3 3" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+              {/* Charts */}
+              {result.technical_analysis?.chart_data && result.technical_analysis.chart_data.length > 0 && (
+                <div style={styles.chartArea}>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <LineChart data={result.technical_analysis.chart_data}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                      <XAxis dataKey="date" tick={{fontSize: 11, fill: '#666'}} stroke="#333" />
+                      <YAxis 
+                        domain={getPriceDomain(result.technical_analysis.chart_data)}
+                        tick={{fontSize: 11, fill: '#666'}}
+                        stroke="#333"
+                        orientation="right"
+                      />
+                      <Tooltip 
+                        contentStyle={{backgroundColor: '#0a0a0a', border: '1px solid #333', borderRadius: '4px'}}
+                        labelStyle={{color: '#00ff88'}}
+                      />
+                      <Line type="monotone" dataKey="price" stroke="#00ff88" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  
+                  <ResponsiveContainer width="100%" height={150}>
+                    <LineChart data={result.technical_analysis.chart_data}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{fontSize: 10, fill: '#666'}} 
+                        stroke="#333"
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis 
+                        domain={[0, 100]} 
+                        tick={{fontSize: 11, fill: '#666'}}
+                        stroke="#333"
+                        orientation="right"
+                      />
+                      <Tooltip 
+                        contentStyle={{backgroundColor: '#0a0a0a', border: '1px solid #333', borderRadius: '4px'}}
+                        labelStyle={{color: '#ffaa00'}}
+                      />
+                      <Line type="monotone" dataKey="rsi" stroke="#ffaa00" strokeWidth={2} dot={false} />
+                      <ReferenceLine y={70} stroke="#ff4444" strokeDasharray="3 3" />
+                      <ReferenceLine y={30} stroke="#00ff88" strokeDasharray="3 3" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Bottom Info Panels */}
+              <div style={styles.bottomPanels}>
+                <div style={styles.infoPanel}>
+                  <h3 style={styles.panelTitle}>KEY STATISTICS</h3>
+                  <div style={styles.statRow}>
+                    <span style={styles.statLabel}>Open</span>
+                    <span style={styles.statValue}>${result.technical_analysis?.current_price?.toFixed(2)}</span>
+                  </div>
+                  <div style={styles.statRow}>
+                    <span style={styles.statLabel}>High</span>
+                    <span style={styles.statValue}>
+                      ${Math.max(...(result.technical_analysis?.chart_data?.map(d => d.price) || [0])).toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={styles.statRow}>
+                    <span style={styles.statLabel}>Low</span>
+                    <span style={styles.statValue}>
+                      ${Math.min(...(result.technical_analysis?.chart_data?.map(d => d.price) || [0])).toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={styles.statRow}>
+                    <span style={styles.statLabel}>RSI</span>
+                    <span style={styles.statValue}>{result.technical_analysis?.rsi?.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div style={styles.infoPanel}>
+                  <h3 style={styles.panelTitle}>RECOMMENDATION</h3>
+                  <div style={styles.recommendationBox}>
+                    <div style={styles.recHeader}>
+                      <span style={{
+                        color: result.recommendation === 'BUY' ? '#00ff88' : result.recommendation === 'SELL' ? '#ff4444' : '#ffaa00',
+                        fontWeight: 'bold',
+                        fontSize: '18px'
+                      }}>
+                        {result.recommendation}
+                      </span>
+                      <span style={styles.confidence}>{Math.round(result.confidence * 100)}% confidence</span>
+                    </div>
+                    <div style={styles.summary}>{result.summary}</div>
+                  </div>
+                </div>
+
+                <div style={styles.infoPanel}>
+                  <h3 style={styles.panelTitle}>SENTIMENT</h3>
+                  <div style={styles.statRow}>
+                    <span style={styles.statLabel}>Sentiment:</span>
+                    <span style={{
+                      ...styles.statValue,
+                      color: result.sentiment_analysis?.sentiment === 'Bullish' ? '#00ff88' : '#ff4444'
+                    }}>
+                      {result.sentiment_analysis?.sentiment || 'N/A'}
+                    </span>
+                  </div>
+                  <div style={styles.statRow}>
+                    <span style={styles.statLabel}>Signal:</span>
+                    <span style={styles.statValue}>{result.technical_analysis?.rsi_signal}</span>
+                  </div>
+                  <div style={{...styles.statRow, flexDirection: 'column', alignItems: 'flex-start'}}>
+                    <span style={styles.statLabel}>Rationale:</span>
+                    <p style={styles.rationale}>{result.sentiment_analysis?.rationale}</p>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
-          {/* Bottom Info Grid */}
-          <div style={styles.infoGrid}>
-            {/* Key Statistics */}
-            <div style={styles.infoPanel}>
-              <div style={styles.panelTitle}>KEY STATISTICS</div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Open</span>
-                <span style={styles.statValue}>${result.technical_analysis?.current_price?.toFixed(2)}</span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>High</span>
-                <span style={styles.statValue}>
-                  ${Math.max(...(result.technical_analysis?.chart_data?.map(d => d.price) || [0])).toFixed(2)}
-                </span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>Low</span>
-                <span style={styles.statValue}>
-                  ${Math.min(...(result.technical_analysis?.chart_data?.map(d => d.price) || [0])).toFixed(2)}
-                </span>
-              </div>
-              <div style={styles.statRow}>
-                <span style={styles.statLabel}>RSI</span>
-                <span style={styles.statValue}>{result.technical_analysis?.rsi?.toFixed(2)}</span>
-              </div>
+          {loading && (
+            <div style={styles.loadingState}>
+              <div style={styles.loader}></div>
+              <div>Analyzing {ticker}...</div>
             </div>
+          )}
+        </section>
 
-            {/* Analyst Agent */}
-            <div style={styles.infoPanel}>
-              <div style={styles.panelTitle}>🤖 ANALYST AGENT</div>
-              <div style={styles.agentBox}>
-                <div style={styles.agentRecommendation}>
-                  <span style={{
-                    color: result.recommendation === 'BUY' ? '#00ff88' : result.recommendation === 'SELL' ? '#ff4444' : '#ffaa00',
-                    fontWeight: 'bold',
-                    fontSize: '18px'
-                  }}>
-                    {result.recommendation}
-                  </span>
-                  <span style={styles.confidence}>
-                    {Math.round(result.confidence * 100)}% confidence
-                  </span>
-                </div>
-                <div style={styles.agentSummary}>{result.summary}</div>
-                <div style={styles.sentimentRow}>
-                  <span style={styles.statLabel}>Sentiment:</span>
-                  <span style={{
-                    ...styles.statValue,
-                    color: result.sentiment_analysis?.sentiment === 'Bullish' ? '#00ff88' : '#ff4444'
-                  }}>
-                    {result.sentiment_analysis?.sentiment || 'N/A'}
-                  </span>
-                </div>
-                <div style={styles.sentimentRow}>
-                  <span style={styles.statLabel}>Signal:</span>
-                  <span style={styles.statValue}>{result.technical_analysis?.rsi_signal}</span>
-                </div>
-              </div>
+        {/* Right Sidebar: Chat */}
+        <aside style={styles.chatSidebar}>
+          <div style={styles.chatHeader}>
+            <div style={styles.chatHeaderLeft}>
+              <span style={styles.statusDotSmall}></span>
+              <h2 style={styles.chatTitle}>ANALYST AGENT</h2>
             </div>
+            <div style={styles.chatVersion}>v2.5-FLASH</div>
           </div>
-        </div>
-      )}
 
-      {!result && !loading && (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>📊</div>
-          <div style={styles.emptyText}>Enter a ticker symbol to analyze</div>
-        </div>
-      )}
+          <div style={styles.chatMessages}>
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} style={{
+                ...styles.chatMessage,
+                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start'
+              }}>
+                <div style={{
+                  ...styles.messageContent,
+                  backgroundColor: msg.role === 'user' ? '#1a1a1a' : '#0f0f0f',
+                  borderColor: msg.role === 'user' ? '#333' : '#ffaa00'
+                }}>
+                  <div style={styles.messageHeader}>
+                    <span>{msg.role === 'user' ? 'TRADER' : 'SYSTEM'}</span>
+                    <span>{msg.timestamp.toLocaleTimeString()}</span>
+                  </div>
+                  <div style={styles.messageText}>{msg.content}</div>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div style={styles.chatInput}>
+            <form onSubmit={handleChatSubmit} style={styles.chatForm}>
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Query market data or ask for analysis..."
+                style={styles.chatInputField}
+              />
+              <button type="submit" style={styles.chatSendBtn}>→</button>
+            </form>
+          </div>
+        </aside>
+      </main>
     </div>
   );
 }
 
 const styles = {
   container: {
-    minHeight: '100vh',
-    backgroundColor: '#000000',
-    color: '#ffffff',
+    height: '100vh',
+    width: '100vw',
+    backgroundColor: '#000',
+    color: '#fff',
     fontFamily: '"Courier New", monospace',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
   },
   header: {
+    height: '48px',
+    backgroundColor: '#0a0a0a',
+    borderBottom: '1px solid #1a1a1a',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '16px 24px',
-    backgroundColor: '#0a0a0a',
-    borderBottom: '1px solid #1a1a1a',
+    padding: '0 16px',
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '24px',
   },
   logo: {
     fontSize: '18px',
@@ -255,66 +377,136 @@ const styles = {
     color: '#ffaa00',
     letterSpacing: '2px',
   },
-  searchBar: {
+  headerCenter: {
     display: 'flex',
-    gap: '8px',
     alignItems: 'center',
+    gap: '12px',
+    fontSize: '12px',
+  },
+  marketStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: '#00ff88',
+  },
+  statusDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#00ff88',
+    animation: 'pulse 2s infinite',
+  },
+  divider: {
+    color: '#666',
+  },
+  time: {
+    color: '#fff',
+  },
+  location: {
+    color: '#ffaa00',
+  },
+  headerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  userAvatar: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    backgroundColor: '#ffaa00',
+    color: '#000',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 'bold',
+    fontSize: '12px',
+  },
+  tickerTape: {
+    height: '32px',
+    backgroundColor: '#0a0a0a',
+    borderBottom: '1px solid #1a1a1a',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  tickerContent: {
+    display: 'flex',
+    animation: 'scroll 30s linear infinite',
+    whiteSpace: 'nowrap',
+  },
+  tickerItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '0 16px',
+    borderRight: '1px solid #1a1a1a',
+    height: '32px',
+  },
+  tickerSymbol: {
+    fontWeight: 'bold',
+    color: '#ffaa00',
+    fontSize: '12px',
+  },
+  tickerPrice: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+  },
+  tickerChange: {
+    fontSize: '11px',
+  },
+  mainContent: {
+    flex: 1,
+    display: 'flex',
+    overflow: 'hidden',
+  },
+  centerSection: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: '#000',
+    overflow: 'auto',
+  },
+  stockHeader: {
+    height: '80px',
+    borderBottom: '1px solid #1a1a1a',
+    padding: '16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0a0a0a',
+  },
+  stockTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    marginBottom: '8px',
+  },
+  stockSymbol: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    margin: 0,
   },
   searchInput: {
     backgroundColor: '#1a1a1a',
     border: '1px solid #333',
     borderRadius: '4px',
-    padding: '8px 16px',
+    padding: '6px 12px',
     color: '#fff',
-    fontSize: '14px',
+    fontSize: '12px',
     fontFamily: '"Courier New", monospace',
     outline: 'none',
-    width: '200px',
   },
-  searchButton: {
-    backgroundColor: '#ffaa00',
-    border: 'none',
-    borderRadius: '4px',
-    padding: '8px 16px',
-    color: '#000',
-    fontSize: '16px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontFamily: '"Courier New", monospace',
-  },
-  error: {
-    margin: '20px',
-    padding: '16px',
-    backgroundColor: '#2a0000',
-    border: '1px solid #ff4444',
-    borderRadius: '4px',
-    color: '#ff4444',
-  },
-  mainContent: {
-    padding: '0',
-  },
-  tickerHeader: {
+  priceInfo: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '24px',
-    backgroundColor: '#0a0a0a',
-    borderBottom: '1px solid #1a1a1a',
+    gap: '12px',
   },
-  tickerSymbol: {
-    fontSize: '24px',
+  currentPrice: {
+    fontSize: '20px',
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: '8px',
-  },
-  tickerPrice: {
-    fontSize: '32px',
-    fontWeight: 'bold',
-    color: '#fff',
   },
   priceChange: {
-    fontSize: '18px',
-    marginLeft: '16px',
+    fontSize: '14px',
   },
   actionButtons: {
     display: 'flex',
@@ -330,86 +522,186 @@ const styles = {
     fontFamily: '"Courier New", monospace',
     color: '#fff',
   },
-  chartContainer: {
+  chartArea: {
+    flex: 1,
+    padding: '16px',
     backgroundColor: '#0a0a0a',
-    padding: '20px',
-    borderBottom: '1px solid #1a1a1a',
   },
-  infoGrid: {
+  bottomPanels: {
+    height: '200px',
+    borderTop: '1px solid #1a1a1a',
     display: 'grid',
-    gridTemplateColumns: '1fr 2fr',
+    gridTemplateColumns: '1fr 1fr 1fr',
     gap: '1px',
     backgroundColor: '#1a1a1a',
   },
   infoPanel: {
     backgroundColor: '#0a0a0a',
-    padding: '20px',
+    padding: '16px',
   },
   panelTitle: {
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: 'bold',
     color: '#ffaa00',
-    marginBottom: '16px',
+    marginBottom: '12px',
     letterSpacing: '1px',
   },
   statRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    padding: '8px 0',
+    padding: '6px 0',
     borderBottom: '1px solid #1a1a1a',
+    fontSize: '12px',
   },
   statLabel: {
     color: '#666',
-    fontSize: '13px',
   },
   statValue: {
     color: '#fff',
-    fontSize: '13px',
     fontWeight: 'bold',
   },
-  agentBox: {
+  recommendationBox: {
     backgroundColor: '#0f0f0f',
-    padding: '16px',
+    padding: '12px',
     borderRadius: '4px',
     border: '1px solid #1a1a1a',
   },
-  agentRecommendation: {
+  recHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '12px',
-    paddingBottom: '12px',
+    marginBottom: '8px',
+    paddingBottom: '8px',
     borderBottom: '1px solid #1a1a1a',
   },
   confidence: {
     color: '#666',
-    fontSize: '12px',
+    fontSize: '11px',
   },
-  agentSummary: {
+  summary: {
     color: '#999',
-    fontSize: '13px',
+    fontSize: '11px',
     lineHeight: '1.6',
-    marginBottom: '16px',
   },
-  sentimentRow: {
+  rationale: {
+    color: '#999',
+    fontSize: '11px',
+    lineHeight: '1.4',
+    marginTop: '4px',
+  },
+  chatSidebar: {
+    width: '320px',
+    borderLeft: '1px solid #1a1a1a',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: '#0a0a0a',
+  },
+  chatHeader: {
+    padding: '12px',
+    borderBottom: '1px solid #1a1a1a',
+    backgroundColor: '#000',
     display: 'flex',
     justifyContent: 'space-between',
-    padding: '6px 0',
+    alignItems: 'center',
   },
-  emptyState: {
+  chatHeaderLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  statusDotSmall: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    backgroundColor: '#00ff88',
+    animation: 'pulse 2s infinite',
+  },
+  chatTitle: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#ffaa00',
+    letterSpacing: '1px',
+    margin: 0,
+  },
+  chatVersion: {
+    fontSize: '10px',
+    color: '#666',
+  },
+  chatMessages: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  chatMessage: {
+    display: 'flex',
+    maxWidth: '85%',
+  },
+  messageContent: {
+    borderRadius: '4px',
+    padding: '12px',
+    border: '1px solid',
+  },
+  messageHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '9px',
+    color: '#666',
+    marginBottom: '6px',
+    textTransform: 'uppercase',
+  },
+  messageText: {
+    fontSize: '12px',
+    lineHeight: '1.5',
+    color: '#fff',
+  },
+  chatInput: {
+    padding: '12px',
+    borderTop: '1px solid #1a1a1a',
+    backgroundColor: '#000',
+  },
+  chatForm: {
+    display: 'flex',
+    gap: '8px',
+  },
+  chatInputField: {
+    flex: 1,
+    backgroundColor: '#0a0a0a',
+    border: '1px solid #333',
+    borderRadius: '4px',
+    padding: '8px',
+    color: '#fff',
+    fontSize: '12px',
+    fontFamily: '"Courier New", monospace',
+    outline: 'none',
+  },
+  chatSendBtn: {
+    backgroundColor: '#ffaa00',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '8px 16px',
+    color: '#000',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+  },
+  loadingState: {
+    flex: 1,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    height: '60vh',
-  },
-  emptyIcon: {
-    fontSize: '64px',
-    marginBottom: '16px',
-    opacity: 0.3,
-  },
-  emptyText: {
+    gap: '16px',
     color: '#666',
-    fontSize: '16px',
+  },
+  loader: {
+    width: '40px',
+    height: '40px',
+    border: '3px solid #1a1a1a',
+    borderTop: '3px solid #ffaa00',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
   },
 };
