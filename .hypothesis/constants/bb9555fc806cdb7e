@@ -1,0 +1,4 @@
+# file: /Users/johnlim/AWS Hack/src/utils/logging_config.py
+# hypothesis_version: 6.148.3
+
+['%Y-%m-%d %H:%M:%S', 'INFO', 'LOG_LEVEL', 'trading_supervisor']

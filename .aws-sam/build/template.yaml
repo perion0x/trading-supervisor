@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Multi-Agentic Trading Supervisor - AWS Lambda deployment for Bedrock
+  Agent integration
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.13
+    Architectures:
+    - x86_64
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        ACTION_GROUP_NAME: TradingTools
+        API_PATH: /analyze
+Parameters:
+  AlphaVantageApiKey:
+    Type: String
+    Description: Alpha Vantage API key for sentiment analysis (optional)
+    Default: ''
+    NoEcho: true
+  Environment:
+    Type: String
+    Description: Deployment environment
+    Default: dev
+    AllowedValues:
+    - dev
+    - staging
+    - prod
+Resources:
+  TradingSupervisorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: trading-supervisor-${Environment}
+      Description: Multi-Agentic Trading Supervisor for stock analysis
+      CodeUri: TradingSupervisorFunction
+      Handler: src.lambda_handler.lambda_handler
+      Role:
+        Fn::GetAtt:
+        - TradingSupervisorExecutionRole
+        - Arn
+      Environment:
+        Variables:
+          ALPHA_VANTAGE_API_KEY:
+            Ref: AlphaVantageApiKey
+      Tags:
+        Project: TradingSupervisor
+        Environment:
+          Ref: Environment
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /analyze
+            Method: post
+            RestApiId:
+              Ref: TradingApi
+    Metadata:
+      SamResourceId: TradingSupervisorFunction
+  TradingSupervisorExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: trading-supervisor-execution-role-${Environment}
+      Description: Execution role for Trading Supervisor Lambda function
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+      - PolicyName: TradingSupervisorPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+            - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/trading-supervisor-${Environment}:*
+  TradingSupervisorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/trading-supervisor-${Environment}
+      RetentionInDays: 7
+  TradingApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name:
+        Fn::Sub: trading-api-${Environment}
+      StageName:
+        Ref: Environment
+      Cors:
+        AllowOrigin: '''*'''
+        AllowHeaders: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+        AllowMethods: '''POST,GET,OPTIONS'''
+Outputs:
+  TradingSupervisorFunctionArn:
+    Description: ARN of the Trading Supervisor Lambda function
+    Value:
+      Fn::GetAtt:
+      - TradingSupervisorFunction
+      - Arn
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-FunctionArn
+  TradingSupervisorFunctionName:
+    Description: Name of the Trading Supervisor Lambda function
+    Value:
+      Ref: TradingSupervisorFunction
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-FunctionName
+  TradingSupervisorRoleArn:
+    Description: ARN of the Lambda execution role
+    Value:
+      Fn::GetAtt:
+      - TradingSupervisorExecutionRole
+      - Arn
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-RoleArn
+  LogGroupName:
+    Description: CloudWatch Log Group name
+    Value:
+      Ref: TradingSupervisorLogGroup
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-LogGroup
+  TradingApiUrl:
+    Description: API Gateway endpoint URL for Trading Supervisor
+    Value:
+      Fn::Sub: https://${TradingApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/analyze
+    Export:
+      Name:
+        Fn::Sub: ${AWS::StackName}-ApiUrl

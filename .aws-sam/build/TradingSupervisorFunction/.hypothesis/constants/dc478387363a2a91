@@ -1,0 +1,4 @@
+# file: /Users/johnlim/AWS Hack/src/tools/technical_analyst.py
+# hypothesis_version: 6.148.3
+
+[0.0, 1.0, 2.0, 10.0, 100.0, 100, '3mo', 'Close', 'Neutral', 'Overbought', 'Oversold', 'current_price', 'error', 'price_change_24h', 'rsi', 'rsi_signal', 'ticker', 'timestamp']

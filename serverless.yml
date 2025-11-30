@@ -1,0 +1,138 @@
+service: trading-supervisor
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.11
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 512
+  timeout: 30
+  architecture: x86_64
+  
+  # Environment variables
+  environment:
+    LOG_LEVEL: ${env:LOG_LEVEL, 'INFO'}
+    ACTION_GROUP_NAME: TradingTools
+    API_PATH: /analyze
+    ALPHA_VANTAGE_API_KEY: ${env:ALPHA_VANTAGE_API_KEY, ''}
+  
+  # IAM role statements
+  iam:
+    role:
+      name: trading-supervisor-execution-role-${self:provider.stage}
+      statements:
+        # CloudWatch Logs permissions
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource:
+            - arn:aws:logs:${aws:region}:${aws:accountId}:log-group:/aws/lambda/trading-supervisor-${self:provider.stage}:*
+        # Optional: Add Bedrock permissions if needed
+        # - Effect: Allow
+        #   Action:
+        #     - bedrock:InvokeAgent
+        #   Resource: '*'
+  
+  # CloudWatch Logs configuration
+  logs:
+    restApi: true
+  
+  # Tags for all resources
+  tags:
+    Project: TradingSupervisor
+    Environment: ${self:provider.stage}
+    ManagedBy: Serverless
+
+functions:
+  tradingSupervisor:
+    name: trading-supervisor-${self:provider.stage}
+    description: Multi-Agentic Trading Supervisor for stock analysis
+    handler: src.lambda_handler.lambda_handler
+    events:
+      # Optional: Add API Gateway endpoint for direct testing
+      # - http:
+      #     path: /analyze
+      #     method: post
+      #     cors: true
+    # Optional: Enable function URL for direct testing
+    # url:
+    #   authorizer: aws_iam
+
+# Package configuration
+package:
+  patterns:
+    - '!.git/**'
+    - '!.github/**'
+    - '!.hypothesis/**'
+    - '!.pytest_cache/**'
+    - '!.kiro/**'
+    - '!tests/**'
+    - '!venv/**'
+    - '!node_modules/**'
+    - '!*.md'
+    - '!*.txt'
+    - '!demo_*.py'
+    - '!pytest.ini'
+    - '!serverless.yml'
+    - '!template.yaml'
+    - 'src/**'
+    - 'requirements.txt'
+
+# Plugins
+plugins:
+  - serverless-python-requirements
+
+# Plugin configuration
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    layer: false
+    zip: true
+    slim: true
+    strip: false
+    noDeploy:
+      - pytest
+      - hypothesis
+      - boto3
+      - botocore
+    pythonBin: python3.11
+
+# CloudFormation resources
+resources:
+  Resources:
+    # CloudWatch Log Group with retention
+    TradingSupervisorLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/trading-supervisor-${self:provider.stage}
+        RetentionInDays: 7
+    
+    # Optional: Bedrock Agent (can be created separately)
+    # TradingBedrockAgent:
+    #   Type: AWS::Bedrock::Agent
+    #   Properties:
+    #     AgentName: trading-supervisor-${self:provider.stage}
+    #     Description: Multi-agentic trading analysis system
+    #     Instruction: You are a fund manager that analyzes stocks using technical and sentiment analysis tools.
+    #     FoundationModel: anthropic.claude-v2
+  
+  Outputs:
+    TradingSupervisorFunctionArn:
+      Description: ARN of the Trading Supervisor Lambda function
+      Value:
+        Fn::GetAtt:
+          - TradingSupervisorLambdaFunction
+          - Arn
+      Export:
+        Name: ${self:service}-${self:provider.stage}-function-arn
+    
+    TradingSupervisorFunctionName:
+      Description: Name of the Trading Supervisor Lambda function
+      Value:
+        Ref: TradingSupervisorLambdaFunction
+      Export:
+        Name: ${self:service}-${self:provider.stage}-function-name

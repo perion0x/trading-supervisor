@@ -1,0 +1,4 @@
+# file: /Users/johnlim/AWS Hack/src/lambda_handler.py
+# hypothesis_version: 6.148.3
+
+[0.0, 200, 500, '/analyze', '1.0', 'ACTION_GROUP_NAME', 'API_PATH', 'ERROR', 'HOLD', 'No summary available', 'POST', 'TradingTools', 'Unknown', 'actionGroup', 'apiPath', 'application/json', 'body', 'confidence', 'error', 'httpMethod', 'httpStatusCode', 'inputText', 'lastRecommendation', 'lastTicker', 'message', 'messageVersion', 'query', 'recommendation', 'response', 'responseBody', 'result', 'sentiment_analysis', 'sessionAttributes', 'summary', 'technical_analysis', 'text', 'ticker', 'timestamp']

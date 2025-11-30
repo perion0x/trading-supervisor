@@ -1,0 +1,4 @@
+# file: /Users/johnlim/AWS Hack/src/models.py
+# hypothesis_version: 6.148.3
+
+[0.0, 1.0, 100, 'BUY', 'Bearish', 'Bullish', 'HOLD', 'Neutral', 'Overbought', 'Oversold', 'SELL', '^[A-Z]{1,5}$']

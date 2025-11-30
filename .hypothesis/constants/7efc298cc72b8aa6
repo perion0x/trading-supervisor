@@ -1,0 +1,4 @@
+# file: /Users/johnlim/AWS Hack/src/tools/sentiment_analyst.py
+# hypothesis_version: 6.148.3
+
+[0.45, 0.5, 255.0, 'Bearish', 'Bullish', 'confidence', 'error', 'rationale', 'sentiment', 'ticker', 'timestamp']
