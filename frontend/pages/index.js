@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 export default function Home() {
   const [ticker, setTicker] = useState('');
@@ -87,6 +88,26 @@ export default function Home() {
             <div style={styles.summary}>
               <p>{result.summary}</p>
             </div>
+
+            {result.technical_analysis && result.technical_analysis.chart_data && result.technical_analysis.chart_data.length > 0 && (
+              <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>📈 Price & RSI Chart (30 Days)</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={result.technical_analysis.chart_data}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{fontSize: 12}} angle={-45} textAnchor="end" height={60} />
+                    <YAxis yAxisId="left" label={{ value: 'Price ($)', angle: -90, position: 'insideLeft' }} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 100]} label={{ value: 'RSI', angle: 90, position: 'insideRight' }} />
+                    <Tooltip />
+                    <Legend />
+                    <Line yAxisId="left" type="monotone" dataKey="price" stroke="#667eea" strokeWidth={2} name="Price" dot={false} />
+                    <Line yAxisId="right" type="monotone" dataKey="rsi" stroke="#f59e0b" strokeWidth={2} name="RSI" dot={false} />
+                    <ReferenceLine yAxisId="right" y={70} stroke="#ef4444" strokeDasharray="3 3" label="Overbought" />
+                    <ReferenceLine yAxisId="right" y={30} stroke="#10b981" strokeDasharray="3 3" label="Oversold" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
             <div style={styles.section}>
               <h3 style={styles.sectionTitle}>📊 Technical Analysis</h3>

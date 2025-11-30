@@ -176,6 +176,27 @@ def analyze_technical(ticker: str) -> Dict[str, Any]:
         
         logger.info(f"Technical analysis complete for {ticker}: RSI={rsi:.2f}, Signal={rsi_signal}")
         
+        # Prepare chart data (last 30 days)
+        chart_data = []
+        last_30_days = df.tail(30)
+        
+        # Calculate RSI for each point
+        prices = df['Close']
+        deltas = prices.diff()
+        gains = deltas.where(deltas > 0, 0.0)
+        losses = -deltas.where(deltas < 0, 0.0)
+        avg_gain = gains.rolling(window=14, min_periods=14).mean()
+        avg_loss = losses.rolling(window=14, min_periods=14).mean()
+        rs = avg_gain / avg_loss
+        rsi_series = 100 - (100 / (1 + rs))
+        
+        for idx, row in last_30_days.iterrows():
+            chart_data.append({
+                "date": idx.strftime('%Y-%m-%d'),
+                "price": float(row['Close']),
+                "rsi": float(rsi_series.loc[idx]) if not pd.isna(rsi_series.loc[idx]) else None
+            })
+        
         return {
             "ticker": analysis.ticker,
             "current_price": analysis.current_price,
@@ -183,6 +204,7 @@ def analyze_technical(ticker: str) -> Dict[str, Any]:
             "rsi_signal": analysis.rsi_signal,
             "price_change_24h": analysis.price_change_24h,
             "timestamp": analysis.timestamp.isoformat(),
+            "chart_data": chart_data,
             "error": None
         }
         
