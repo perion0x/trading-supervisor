@@ -9,6 +9,21 @@ export default function Home() {
 
   const API_URL = 'https://j0hz2ok0kb.execute-api.us-east-1.amazonaws.com/dev/analyze';
 
+  // Calculate price domain with 10% buffer
+  const getPriceDomain = (chartData) => {
+    if (!chartData || chartData.length === 0) return ['auto', 'auto'];
+    
+    const prices = chartData.map(d => d.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const buffer = (maxPrice - minPrice) * 0.1;
+    
+    return [
+      Math.floor(minPrice - buffer),
+      Math.ceil(maxPrice + buffer)
+    ];
+  };
+
   const analyzeTicker = async () => {
     if (!ticker) return;
     
@@ -96,7 +111,10 @@ export default function Home() {
                   <LineChart data={result.technical_analysis.chart_data}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="date" tick={{fontSize: 12}} />
-                    <YAxis label={{ value: 'Price ($)', angle: -90, position: 'insideLeft' }} />
+                    <YAxis 
+                      domain={getPriceDomain(result.technical_analysis.chart_data)}
+                      label={{ value: 'Price ($)', angle: -90, position: 'insideLeft' }} 
+                    />
                     <Tooltip />
                     <Legend />
                     <Line type="monotone" dataKey="price" stroke="#667eea" strokeWidth={2} name="Price" dot={false} />
