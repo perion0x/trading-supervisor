@@ -28,9 +28,9 @@ export default function Home() {
 
       const data = await response.json();
       
-      if (data.response && data.response.responseBody) {
-        const body = JSON.parse(data.response.responseBody['application/json'].body);
-        setResult(body.result);
+      // API Gateway returns data directly
+      if (data.ticker) {
+        setResult(data);
       } else {
         setError('Unexpected response format');
       }
