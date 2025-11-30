@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 export default function Home() {
   const [ticker, setTicker] = useState('');
@@ -59,139 +59,177 @@ export default function Home() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>📈 Trading Supervisor</h1>
-        <p style={styles.subtitle}>Multi-Agent Stock Analysis</p>
-
-        <div style={styles.inputGroup}>
+      {/* Header */}
+      <div style={styles.header}>
+        <div style={styles.logo}>⚡ TERMINAL.AI</div>
+        <div style={styles.searchBar}>
           <input
             type="text"
-            placeholder="Enter stock ticker (e.g., AAPL)"
+            placeholder="Search ticker..."
             value={ticker}
             onChange={(e) => setTicker(e.target.value.toUpperCase())}
-            onKeyPress={(e) => e.key === 'Enter' && analyzeTicker()}
-            style={styles.input}
+            onKeyDown={(e) => e.key === 'Enter' && analyzeTicker()}
+            style={styles.searchInput}
           />
-          <button
-            onClick={analyzeTicker}
-            disabled={loading || !ticker}
-            style={{
-              ...styles.button,
-              ...(loading || !ticker ? styles.buttonDisabled : {})
-            }}
-          >
-            {loading ? 'Analyzing...' : 'Analyze'}
+          <button onClick={analyzeTicker} disabled={loading || !ticker} style={styles.searchButton}>
+            {loading ? '...' : '→'}
           </button>
         </div>
-
-        {error && (
-          <div style={styles.error}>
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-
-        {result && (
-          <div style={styles.results}>
-            <div style={{
-              ...styles.recommendation,
-              backgroundColor: result.recommendation === 'BUY' ? '#10b981' : result.recommendation === 'SELL' ? '#ef4444' : '#f59e0b'
-            }}>
-              <h2 style={styles.recommendationText}>{result.recommendation}</h2>
-              <p style={styles.confidence}>Confidence: {Math.round(result.confidence * 100)}%</p>
-            </div>
-
-            <div style={styles.summary}>
-              <p>{result.summary}</p>
-            </div>
-
-            {result.technical_analysis && result.technical_analysis.chart_data && result.technical_analysis.chart_data.length > 0 && (
-              <div style={styles.section}>
-                <h3 style={styles.sectionTitle}>📈 Price Chart (30 Days)</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={result.technical_analysis.chart_data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="date" tick={{fontSize: 12}} />
-                    <YAxis 
-                      domain={getPriceDomain(result.technical_analysis.chart_data)}
-                      label={{ value: 'Price ($)', angle: -90, position: 'insideLeft' }} 
-                    />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="price" stroke="#667eea" strokeWidth={2} name="Price" dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-                
-                <h3 style={{...styles.sectionTitle, marginTop: '32px'}}>📊 RSI Indicator</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={result.technical_analysis.chart_data}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="date" tick={{fontSize: 12}} angle={-45} textAnchor="end" height={60} />
-                    <YAxis domain={[0, 100]} label={{ value: 'RSI', angle: -90, position: 'insideLeft' }} />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="rsi" stroke="#f59e0b" strokeWidth={2} name="RSI" dot={false} />
-                    <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 3" label="Overbought (70)" />
-                    <ReferenceLine y={30} stroke="#10b981" strokeDasharray="3 3" label="Oversold (30)" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-
-            <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>📊 Technical Analysis</h3>
-              {result.technical_analysis && !result.technical_analysis.error ? (
-                <div style={styles.metrics}>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>Current Price:</span>
-                    <span style={styles.metricValue}>${result.technical_analysis.current_price?.toFixed(2)}</span>
-                  </div>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>RSI:</span>
-                    <span style={styles.metricValue}>{result.technical_analysis.rsi?.toFixed(2)}</span>
-                  </div>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>Signal:</span>
-                    <span style={styles.metricValue}>{result.technical_analysis.rsi_signal}</span>
-                  </div>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>24h Change:</span>
-                    <span style={{
-                      ...styles.metricValue,
-                      color: result.technical_analysis.price_change_24h >= 0 ? '#10b981' : '#ef4444'
-                    }}>
-                      ${result.technical_analysis.price_change_24h?.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <p style={styles.errorText}>Technical analysis unavailable</p>
-              )}
-            </div>
-
-            <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>📰 Sentiment Analysis</h3>
-              {result.sentiment_analysis && !result.sentiment_analysis.error ? (
-                <div style={styles.metrics}>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>Sentiment:</span>
-                    <span style={styles.metricValue}>{result.sentiment_analysis.sentiment}</span>
-                  </div>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>Confidence:</span>
-                    <span style={styles.metricValue}>{Math.round(result.sentiment_analysis.confidence * 100)}%</span>
-                  </div>
-                  <div style={styles.metricFull}>
-                    <span style={styles.metricLabel}>Rationale:</span>
-                    <p style={styles.rationale}>{result.sentiment_analysis.rationale}</p>
-                  </div>
-                </div>
-              ) : (
-                <p style={styles.errorText}>Sentiment analysis unavailable</p>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {error && (
+        <div style={styles.error}>
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {result && (
+        <div style={styles.mainContent}>
+          {/* Ticker Header */}
+          <div style={styles.tickerHeader}>
+            <div>
+              <div style={styles.tickerSymbol}>{result.ticker}</div>
+              <div style={styles.tickerPrice}>
+                ${result.technical_analysis?.current_price?.toFixed(2)}
+                <span style={{
+                  ...styles.priceChange,
+                  color: result.technical_analysis?.price_change_24h >= 0 ? '#00ff88' : '#ff4444'
+                }}>
+                  {result.technical_analysis?.price_change_24h >= 0 ? '+' : ''}
+                  ${result.technical_analysis?.price_change_24h?.toFixed(2)} 
+                  ({((result.technical_analysis?.price_change_24h / result.technical_analysis?.current_price) * 100).toFixed(2)}%)
+                </span>
+              </div>
+            </div>
+            <div style={styles.actionButtons}>
+              <button style={{...styles.actionBtn, backgroundColor: '#00ff88', color: '#000'}}>BUY</button>
+              <button style={{...styles.actionBtn, backgroundColor: '#ff4444'}}>SELL</button>
+            </div>
+          </div>
+
+          {/* Charts */}
+          {result.technical_analysis?.chart_data && result.technical_analysis.chart_data.length > 0 && (
+            <div style={styles.chartContainer}>
+              <ResponsiveContainer width="100%" height={350}>
+                <LineChart data={result.technical_analysis.chart_data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{fontSize: 11, fill: '#666'}} 
+                    stroke="#333"
+                  />
+                  <YAxis 
+                    domain={getPriceDomain(result.technical_analysis.chart_data)}
+                    tick={{fontSize: 11, fill: '#666'}}
+                    stroke="#333"
+                    orientation="right"
+                  />
+                  <Tooltip 
+                    contentStyle={{backgroundColor: '#0a0a0a', border: '1px solid #333', borderRadius: '4px'}}
+                    labelStyle={{color: '#00ff88'}}
+                  />
+                  <Line type="monotone" dataKey="price" stroke="#00ff88" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+              
+              <ResponsiveContainer width="100%" height={150}>
+                <LineChart data={result.technical_analysis.chart_data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{fontSize: 10, fill: '#666'}} 
+                    stroke="#333"
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    tick={{fontSize: 11, fill: '#666'}}
+                    stroke="#333"
+                    orientation="right"
+                  />
+                  <Tooltip 
+                    contentStyle={{backgroundColor: '#0a0a0a', border: '1px solid #333', borderRadius: '4px'}}
+                    labelStyle={{color: '#ffaa00'}}
+                  />
+                  <Line type="monotone" dataKey="rsi" stroke="#ffaa00" strokeWidth={2} dot={false} />
+                  <ReferenceLine y={70} stroke="#ff4444" strokeDasharray="3 3" />
+                  <ReferenceLine y={30} stroke="#00ff88" strokeDasharray="3 3" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Bottom Info Grid */}
+          <div style={styles.infoGrid}>
+            {/* Key Statistics */}
+            <div style={styles.infoPanel}>
+              <div style={styles.panelTitle}>KEY STATISTICS</div>
+              <div style={styles.statRow}>
+                <span style={styles.statLabel}>Open</span>
+                <span style={styles.statValue}>${result.technical_analysis?.current_price?.toFixed(2)}</span>
+              </div>
+              <div style={styles.statRow}>
+                <span style={styles.statLabel}>High</span>
+                <span style={styles.statValue}>
+                  ${Math.max(...(result.technical_analysis?.chart_data?.map(d => d.price) || [0])).toFixed(2)}
+                </span>
+              </div>
+              <div style={styles.statRow}>
+                <span style={styles.statLabel}>Low</span>
+                <span style={styles.statValue}>
+                  ${Math.min(...(result.technical_analysis?.chart_data?.map(d => d.price) || [0])).toFixed(2)}
+                </span>
+              </div>
+              <div style={styles.statRow}>
+                <span style={styles.statLabel}>RSI</span>
+                <span style={styles.statValue}>{result.technical_analysis?.rsi?.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Analyst Agent */}
+            <div style={styles.infoPanel}>
+              <div style={styles.panelTitle}>🤖 ANALYST AGENT</div>
+              <div style={styles.agentBox}>
+                <div style={styles.agentRecommendation}>
+                  <span style={{
+                    color: result.recommendation === 'BUY' ? '#00ff88' : result.recommendation === 'SELL' ? '#ff4444' : '#ffaa00',
+                    fontWeight: 'bold',
+                    fontSize: '18px'
+                  }}>
+                    {result.recommendation}
+                  </span>
+                  <span style={styles.confidence}>
+                    {Math.round(result.confidence * 100)}% confidence
+                  </span>
+                </div>
+                <div style={styles.agentSummary}>{result.summary}</div>
+                <div style={styles.sentimentRow}>
+                  <span style={styles.statLabel}>Sentiment:</span>
+                  <span style={{
+                    ...styles.statValue,
+                    color: result.sentiment_analysis?.sentiment === 'Bullish' ? '#00ff88' : '#ff4444'
+                  }}>
+                    {result.sentiment_analysis?.sentiment || 'N/A'}
+                  </span>
+                </div>
+                <div style={styles.sentimentRow}>
+                  <span style={styles.statLabel}>Signal:</span>
+                  <span style={styles.statValue}>{result.technical_analysis?.rsi_signal}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!result && !loading && (
+        <div style={styles.emptyState}>
+          <div style={styles.emptyIcon}>📊</div>
+          <div style={styles.emptyText}>Enter a ticker symbol to analyze</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -199,136 +237,179 @@ export default function Home() {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: '20px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    backgroundColor: '#000000',
+    color: '#ffffff',
+    fontFamily: '"Courier New", monospace',
   },
-  card: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    backgroundColor: 'white',
-    borderRadius: '16px',
-    padding: '40px',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-  },
-  title: {
-    fontSize: '36px',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: '8px',
-    color: '#1f2937',
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: '#6b7280',
-    marginBottom: '32px',
-  },
-  inputGroup: {
-    display: 'flex',
-    gap: '12px',
-    marginBottom: '24px',
-  },
-  input: {
-    flex: 1,
-    padding: '12px 16px',
-    fontSize: '16px',
-    border: '2px solid #e5e7eb',
-    borderRadius: '8px',
-    outline: 'none',
-  },
-  button: {
-    padding: '12px 32px',
-    fontSize: '16px',
-    fontWeight: '600',
-    color: 'white',
-    backgroundColor: '#667eea',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  },
-  error: {
-    padding: '16px',
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '8px',
-    marginBottom: '16px',
-  },
-  results: {
-    marginTop: '24px',
-  },
-  recommendation: {
-    padding: '24px',
-    borderRadius: '12px',
-    textAlign: 'center',
-    marginBottom: '24px',
-    color: 'white',
-  },
-  recommendationText: {
-    fontSize: '32px',
-    fontWeight: 'bold',
-    margin: '0 0 8px 0',
-  },
-  confidence: {
-    fontSize: '18px',
-    margin: 0,
-    opacity: 0.9,
-  },
-  summary: {
-    padding: '16px',
-    backgroundColor: '#f3f4f6',
-    borderRadius: '8px',
-    marginBottom: '24px',
-  },
-  section: {
-    marginBottom: '24px',
-    padding: '20px',
-    backgroundColor: '#f9fafb',
-    borderRadius: '8px',
-  },
-  sectionTitle: {
-    fontSize: '20px',
-    fontWeight: '600',
-    marginBottom: '16px',
-    color: '#1f2937',
-  },
-  metrics: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '12px',
-  },
-  metric: {
+  header: {
     display: 'flex',
     justifyContent: 'space-between',
-    padding: '12px',
-    backgroundColor: 'white',
-    borderRadius: '6px',
+    alignItems: 'center',
+    padding: '16px 24px',
+    backgroundColor: '#0a0a0a',
+    borderBottom: '1px solid #1a1a1a',
   },
-  metricFull: {
-    gridColumn: '1 / -1',
-    padding: '12px',
-    backgroundColor: 'white',
-    borderRadius: '6px',
+  logo: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#ffaa00',
+    letterSpacing: '2px',
   },
-  metricLabel: {
-    fontWeight: '600',
-    color: '#6b7280',
+  searchBar: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
   },
-  metricValue: {
-    fontWeight: '600',
-    color: '#1f2937',
+  searchInput: {
+    backgroundColor: '#1a1a1a',
+    border: '1px solid #333',
+    borderRadius: '4px',
+    padding: '8px 16px',
+    color: '#fff',
+    fontSize: '14px',
+    fontFamily: '"Courier New", monospace',
+    outline: 'none',
+    width: '200px',
   },
-  rationale: {
-    marginTop: '8px',
-    color: '#4b5563',
-    lineHeight: '1.5',
+  searchButton: {
+    backgroundColor: '#ffaa00',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '8px 16px',
+    color: '#000',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontFamily: '"Courier New", monospace',
   },
-  errorText: {
-    color: '#ef4444',
-    fontStyle: 'italic',
+  error: {
+    margin: '20px',
+    padding: '16px',
+    backgroundColor: '#2a0000',
+    border: '1px solid #ff4444',
+    borderRadius: '4px',
+    color: '#ff4444',
+  },
+  mainContent: {
+    padding: '0',
+  },
+  tickerHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '24px',
+    backgroundColor: '#0a0a0a',
+    borderBottom: '1px solid #1a1a1a',
+  },
+  tickerSymbol: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: '8px',
+  },
+  tickerPrice: {
+    fontSize: '32px',
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  priceChange: {
+    fontSize: '18px',
+    marginLeft: '16px',
+  },
+  actionButtons: {
+    display: 'flex',
+    gap: '12px',
+  },
+  actionBtn: {
+    padding: '12px 32px',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    fontFamily: '"Courier New", monospace',
+    color: '#fff',
+  },
+  chartContainer: {
+    backgroundColor: '#0a0a0a',
+    padding: '20px',
+    borderBottom: '1px solid #1a1a1a',
+  },
+  infoGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 2fr',
+    gap: '1px',
+    backgroundColor: '#1a1a1a',
+  },
+  infoPanel: {
+    backgroundColor: '#0a0a0a',
+    padding: '20px',
+  },
+  panelTitle: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#ffaa00',
+    marginBottom: '16px',
+    letterSpacing: '1px',
+  },
+  statRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '8px 0',
+    borderBottom: '1px solid #1a1a1a',
+  },
+  statLabel: {
+    color: '#666',
+    fontSize: '13px',
+  },
+  statValue: {
+    color: '#fff',
+    fontSize: '13px',
+    fontWeight: 'bold',
+  },
+  agentBox: {
+    backgroundColor: '#0f0f0f',
+    padding: '16px',
+    borderRadius: '4px',
+    border: '1px solid #1a1a1a',
+  },
+  agentRecommendation: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '12px',
+    paddingBottom: '12px',
+    borderBottom: '1px solid #1a1a1a',
+  },
+  confidence: {
+    color: '#666',
+    fontSize: '12px',
+  },
+  agentSummary: {
+    color: '#999',
+    fontSize: '13px',
+    lineHeight: '1.6',
+    marginBottom: '16px',
+  },
+  sentimentRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '6px 0',
+  },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '60vh',
+  },
+  emptyIcon: {
+    fontSize: '64px',
+    marginBottom: '16px',
+    opacity: 0.3,
+  },
+  emptyText: {
+    color: '#666',
+    fontSize: '16px',
   },
 };
