@@ -7,7 +7,7 @@ export default function Home() {
   const [result, setResult] = useState(null);
   const [watchlistData, setWatchlistData] = useState([]);
   const [chatMessages, setChatMessages] = useState([
-    { role: 'agent', content: 'Terminal.ai Analyst online. Market data stream active. How can I assist with your trading strategy today?', timestamp: new Date() }
+    { role: 'agent', content: 'Terminal.ai Analyst online. Market data stream active.\n\nTry asking:\n• "Analyze AAPL"\n• "Should I buy NVDA?"\n• "What\'s the sentiment on MSFT?"\n• "Compare AMZN and JPM"', timestamp: new Date() }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -103,12 +103,24 @@ export default function Home() {
       // Format the response based on what the API returns
       let agentResponse = '';
       
-      if (data.ticker) {
-        // If it's a stock analysis
+      // Check if there was an error
+      if (data.recommendation === 'ERROR' || (data.summary && data.summary.includes('failed'))) {
+        agentResponse = `⚠️ Analysis failed for "${query}".\n\n`;
+        agentResponse += `Possible causes:\n`;
+        agentResponse += `• Invalid ticker (e.g., "APPL" should be "AAPL")\n`;
+        agentResponse += `• Market data temporarily unavailable\n`;
+        agentResponse += `• API timeout (Lambda cold start)\n\n`;
+        agentResponse += `💡 Try these formats:\n`;
+        agentResponse += `• "Analyze AAPL"\n`;
+        agentResponse += `• "Should I buy NVDA?"\n`;
+        agentResponse += `• "What's MSFT sentiment?"\n\n`;
+        agentResponse += `Or click a stock in the watchlist to analyze it.`;
+      } else if (data.ticker && data.technical_analysis?.current_price) {
+        // If it's a successful stock analysis
         agentResponse = `📊 Analysis for ${data.ticker}:\n\n`;
-        agentResponse += `💰 Price: $${data.technical_analysis?.current_price?.toFixed(2)}\n`;
-        agentResponse += `📈 RSI: ${data.technical_analysis?.rsi?.toFixed(2)} (${data.technical_analysis?.rsi_signal})\n`;
-        agentResponse += `📉 24h Change: ${data.technical_analysis?.price_change_24h >= 0 ? '+' : ''}$${data.technical_analysis?.price_change_24h?.toFixed(2)}\n\n`;
+        agentResponse += `💰 Price: $${data.technical_analysis.current_price.toFixed(2)}\n`;
+        agentResponse += `📈 RSI: ${data.technical_analysis.rsi.toFixed(2)} (${data.technical_analysis.rsi_signal})\n`;
+        agentResponse += `📉 24h Change: ${data.technical_analysis.price_change_24h >= 0 ? '+' : ''}$${data.technical_analysis.price_change_24h.toFixed(2)}\n\n`;
         agentResponse += `🎯 Recommendation: ${data.recommendation} (${Math.round(data.confidence * 100)}% confidence)\n\n`;
         agentResponse += `💭 Sentiment: ${data.sentiment_analysis?.sentiment || 'N/A'}\n\n`;
         agentResponse += `📝 ${data.summary}`;
