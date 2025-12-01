@@ -11,6 +11,7 @@ export default function Home() {
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [showWatchlist, setShowWatchlist] = useState(true);
   const messagesEndRef = useRef(null);
 
   const API_URL = 'https://j0hz2ok0kb.execute-api.us-east-1.amazonaws.com/dev/analyze';
@@ -216,42 +217,53 @@ export default function Home() {
       {/* Main Content */}
       <main style={styles.mainContent}>
         {/* Left Sidebar: Watchlist */}
-        <aside style={styles.watchlistSidebar}>
-          <div style={styles.watchlistHeader}>
-            <span style={styles.watchlistTitle}>WATCHLIST</span>
-          </div>
-          <div style={styles.watchlistContent}>
-            {watchlistData.map((stock) => (
-              <div
-                key={stock.symbol}
-                onClick={() => analyzeTicker(stock.symbol)}
-                style={{
-                  ...styles.watchlistItem,
-                  ...(ticker === stock.symbol ? styles.watchlistItemActive : {})
-                }}
-              >
-                <div style={styles.watchlistItemTop}>
-                  <span style={styles.watchlistSymbol}>{stock.symbol}</span>
-                  <span style={{
-                    ...styles.watchlistPrice,
-                    color: stock.change >= 0 ? '#00ff88' : '#ff4444'
-                  }}>
-                    {stock.price.toFixed(2)}
-                  </span>
+        {showWatchlist && (
+          <aside style={styles.watchlistSidebar}>
+            <div style={styles.watchlistHeader}>
+              <span style={styles.watchlistTitle}>WATCHLIST</span>
+            </div>
+            <div style={styles.watchlistContent}>
+              {watchlistData.map((stock) => (
+                <div
+                  key={stock.symbol}
+                  onClick={() => analyzeTicker(stock.symbol)}
+                  style={{
+                    ...styles.watchlistItem,
+                    ...(ticker === stock.symbol ? styles.watchlistItemActive : {})
+                  }}
+                >
+                  <div style={styles.watchlistItemTop}>
+                    <span style={styles.watchlistSymbol}>{stock.symbol}</span>
+                    <span style={{
+                      ...styles.watchlistPrice,
+                      color: stock.change >= 0 ? '#00ff88' : '#ff4444'
+                    }}>
+                      {stock.price.toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={styles.watchlistItemBottom}>
+                    <span style={styles.watchlistName}>{stock.name}</span>
+                    <span style={{
+                      ...styles.watchlistChange,
+                      color: stock.changePercent >= 0 ? '#00ff88' : '#ff4444'
+                    }}>
+                      {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                    </span>
+                  </div>
                 </div>
-                <div style={styles.watchlistItemBottom}>
-                  <span style={styles.watchlistName}>{stock.name}</span>
-                  <span style={{
-                    ...styles.watchlistChange,
-                    color: stock.changePercent >= 0 ? '#00ff88' : '#ff4444'
-                  }}>
-                    {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
+              ))}
+            </div>
+          </aside>
+        )}
+
+        {/* Toggle Button */}
+        <button
+          onClick={() => setShowWatchlist(!showWatchlist)}
+          style={styles.toggleButton}
+          title={showWatchlist ? 'Hide Watchlist' : 'Show Watchlist'}
+        >
+          {showWatchlist ? '◀' : '▶'}
+        </button>
 
         {/* Center: Chart Area */}
         <section style={styles.centerSection}>
@@ -648,6 +660,20 @@ const styles = {
   },
   watchlistChange: {
     fontSize: '11px',
+  },
+  toggleButton: {
+    width: '24px',
+    backgroundColor: '#0a0a0a',
+    border: 'none',
+    borderRight: '1px solid #1a1a1a',
+    color: '#ffaa00',
+    fontSize: '16px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background-color 0.2s',
+    fontFamily: '"Courier New", monospace',
   },
   mainContent: {
     flex: 1,
