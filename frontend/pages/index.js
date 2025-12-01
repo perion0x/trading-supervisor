@@ -89,9 +89,10 @@ export default function Home() {
     setChatLoading(true);
 
     try {
-      // Extract ticker from user query
-      const tickerMatch = query.toUpperCase().match(/\b([A-Z]{1,5})\b/);
-      const extractedTicker = tickerMatch ? tickerMatch[1] : ticker;
+      // Extract ticker from user query - skip common words
+      const skipWords = ['SENTIMENT', 'FOR', 'THE', 'WHAT', 'IS', 'SHOULD', 'BUY', 'SELL', 'ANALYZE', 'ANALYSIS', 'STOCK', 'PRICE', 'RSI'];
+      const words = query.toUpperCase().match(/\b([A-Z]{2,5})\b/g) || [];
+      const extractedTicker = words.find(w => !skipWords.includes(w)) || ticker;
       
       // Always request full analysis to ensure technical data is included
       const response = await fetch(API_URL, {
@@ -109,9 +110,8 @@ export default function Home() {
       
       // Check if there was an error
       if (data.recommendation === 'ERROR' || (data.summary && data.summary.includes('failed'))) {
-        // Extract ticker from query for retry suggestion
-        const tickerMatch = query.match(/\b([A-Z]{1,5})\b/);
-        const suggestedTicker = tickerMatch ? tickerMatch[1] : 'AAPL';
+        // Use the extracted ticker for retry suggestion
+        const suggestedTicker = extractedTicker || 'AAPL';
         
         agentResponse = `⚠️ Analysis failed for "${query}".\n\n`;
         
