@@ -10,6 +10,7 @@ export default function Home() {
     { role: 'agent', content: 'Terminal.ai Analyst online. Market data stream active. How can I assist with your trading strategy today?', timestamp: new Date() }
   ]);
   const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   const API_URL = 'https://j0hz2ok0kb.execute-api.us-east-1.amazonaws.com/dev/analyze';
@@ -79,21 +80,61 @@ export default function Home() {
 
   const handleChatSubmit = async (e) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || chatLoading) return;
 
     const userMessage = { role: 'user', content: chatInput, timestamp: new Date() };
+    const query = chatInput;
     setChatMessages(prev => [...prev, userMessage]);
     setChatInput('');
+    setChatLoading(true);
 
-    // Simulate agent response
-    setTimeout(() => {
+    try {
+      // Call your Lambda API with the user's query
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          inputText: query
+        }),
+      });
+
+      const data = await response.json();
+      
+      // Format the response based on what the API returns
+      let agentResponse = '';
+      
+      if (data.ticker) {
+        // If it's a stock analysis
+        agentResponse = `📊 Analysis for ${data.ticker}:\n\n`;
+        agentResponse += `💰 Price: $${data.technical_analysis?.current_price?.toFixed(2)}\n`;
+        agentResponse += `📈 RSI: ${data.technical_analysis?.rsi?.toFixed(2)} (${data.technical_analysis?.rsi_signal})\n`;
+        agentResponse += `📉 24h Change: ${data.technical_analysis?.price_change_24h >= 0 ? '+' : ''}$${data.technical_analysis?.price_change_24h?.toFixed(2)}\n\n`;
+        agentResponse += `🎯 Recommendation: ${data.recommendation} (${Math.round(data.confidence * 100)}% confidence)\n\n`;
+        agentResponse += `💭 Sentiment: ${data.sentiment_analysis?.sentiment || 'N/A'}\n\n`;
+        agentResponse += `📝 ${data.summary}`;
+      } else if (data.summary) {
+        // If it's a general query response
+        agentResponse = data.summary;
+      } else {
+        agentResponse = 'Analysis complete. Please check the main display for detailed information.';
+      }
+
       const agentMessage = {
         role: 'agent',
-        content: `Analyzing your query: "${chatInput}". Based on current market data, I recommend reviewing the technical indicators and sentiment analysis for ${ticker}.`,
+        content: agentResponse,
         timestamp: new Date()
       };
       setChatMessages(prev => [...prev, agentMessage]);
-    }, 1000);
+    } catch (err) {
+      const errorMessage = {
+        role: 'agent',
+        content: `⚠️ Error: Unable to process your request. ${err.message}`,
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -393,8 +434,18 @@ export default function Home() {
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Query market data or ask for analysis..."
                 style={styles.chatInputField}
+                disabled={chatLoading}
               />
-              <button type="submit" style={styles.chatSendBtn}>→</button>
+              <button 
+                type="submit" 
+                style={{
+                  ...styles.chatSendBtn,
+                  ...(chatLoading ? styles.chatSendBtnDisabled : {})
+                }}
+                disabled={chatLoading}
+              >
+                {chatLoading ? '...' : '→'}
+              </button>
             </form>
           </div>
         </aside>
@@ -806,6 +857,10 @@ const styles = {
     fontSize: '16px',
     fontWeight: 'bold',
     cursor: 'pointer',
+  },
+  chatSendBtnDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
   },
   loadingState: {
     flex: 1,
