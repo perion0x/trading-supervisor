@@ -6,6 +6,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [watchlistData, setWatchlistData] = useState([]);
+  const [cachedResults, setCachedResults] = useState({});
   const [chatMessages, setChatMessages] = useState([
     { role: 'agent', content: 'Terminal.ai Analyst online. Market data stream active.\n\nTry asking:\n• "Analyze AAPL"\n• "Should I buy NVDA?"\n• "What\'s the sentiment on MSFT?"\n• "Compare AMZN and JPM"', timestamp: new Date() }
   ]);
@@ -37,6 +38,13 @@ export default function Home() {
           }),
         });
         const data = await response.json();
+        
+        // Cache the full result for instant loading
+        setCachedResults(prev => ({
+          ...prev,
+          [symbol]: data
+        }));
+        
         return {
           symbol: data.ticker || symbol,
           name: symbol,
@@ -56,6 +64,13 @@ export default function Home() {
   const analyzeTicker = async (symbol) => {
     if (!symbol) return;
     
+    // Check cache first for instant loading
+    if (cachedResults[symbol]) {
+      setResult(cachedResults[symbol]);
+      setTicker(symbol);
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -71,6 +86,11 @@ export default function Home() {
       if (data.ticker) {
         setResult(data);
         setTicker(symbol);
+        // Cache for future use
+        setCachedResults(prev => ({
+          ...prev,
+          [symbol]: data
+        }));
       }
     } catch (err) {
       console.error(err);
