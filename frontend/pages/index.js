@@ -5,7 +5,7 @@ export default function Home() {
   const [ticker, setTicker] = useState('AAPL');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
+  const [watchlistData, setWatchlistData] = useState([]);
   const [chatMessages, setChatMessages] = useState([
     { role: 'agent', content: 'Terminal.ai Analyst online. Market data stream active. How can I assist with your trading strategy today?', timestamp: new Date() }
   ]);
@@ -13,17 +13,7 @@ export default function Home() {
   const messagesEndRef = useRef(null);
 
   const API_URL = 'https://j0hz2ok0kb.execute-api.us-east-1.amazonaws.com/dev/analyze';
-
-  // Mock ticker data for the tape
-  const tickerTapeStocks = [
-    { symbol: 'GOOGL', price: 107.85, change: -0.33 },
-    { symbol: 'TSLA', price: 174.61, change: -3.48 },
-    { symbol: 'AMZN', price: 182.28, change: 2.35 },
-    { symbol: 'BTC-USD', price: 71336.81, change: 1.01 },
-    { symbol: 'ETH-USD', price: 3646.31, change: 2.28 },
-    { symbol: 'JPM', price: 195.87, change: 0.81 },
-    { symbol: 'AAPL', price: 173.82, change: 0.91 },
-  ];
+  const WATCHLIST = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'JPM'];
 
   const getPriceDomain = (chartData) => {
     if (!chartData || chartData.length === 0) return ['auto', 'auto'];
@@ -34,11 +24,37 @@ export default function Home() {
     return [Math.floor(minPrice - buffer), Math.ceil(maxPrice + buffer)];
   };
 
+  const fetchWatchlistData = async () => {
+    const promises = WATCHLIST.map(async (symbol) => {
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            inputText: `Analyze ${symbol} stock with comprehensive analysis including technical and sentiment data`
+          }),
+        });
+        const data = await response.json();
+        return {
+          symbol: data.ticker || symbol,
+          name: symbol,
+          price: data.technical_analysis?.current_price || 0,
+          change: data.technical_analysis?.price_change_24h || 0,
+          changePercent: ((data.technical_analysis?.price_change_24h / data.technical_analysis?.current_price) * 100) || 0,
+        };
+      } catch (err) {
+        return { symbol, name: symbol, price: 0, change: 0, changePercent: 0 };
+      }
+    });
+    
+    const results = await Promise.all(promises);
+    setWatchlistData(results);
+  };
+
   const analyzeTicker = async (symbol) => {
     if (!symbol) return;
     
     setLoading(true);
-    setError(null);
 
     try {
       const response = await fetch(API_URL, {
@@ -53,11 +69,9 @@ export default function Home() {
       if (data.ticker) {
         setResult(data);
         setTicker(symbol);
-      } else {
-        setError('Unexpected response format');
       }
     } catch (err) {
-      setError(err.message);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -88,6 +102,11 @@ export default function Home() {
 
   useEffect(() => {
     analyzeTicker('AAPL');
+    fetchWatchlistData();
+    
+    // Refresh watchlist every 30 seconds
+    const interval = setInterval(fetchWatchlistData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -115,14 +134,14 @@ export default function Home() {
       {/* Ticker Tape */}
       <div style={styles.tickerTape}>
         <div style={styles.tickerContent}>
-          {[...tickerTapeStocks, ...tickerTapeStocks, ...tickerTapeStocks].map((stock, idx) => (
+          {watchlistData.length > 0 && [...watchlistData, ...watchlistData, ...watchlistData].map((stock, idx) => (
             <div key={idx} style={styles.tickerItem}>
               <span style={styles.tickerSymbol}>{stock.symbol}</span>
               <span style={{...styles.tickerPrice, color: stock.change >= 0 ? '#00ff88' : '#ff4444'}}>
                 {stock.price.toFixed(2)}
               </span>
-              <span style={{...styles.tickerChange, color: stock.change >= 0 ? '#00ff88' : '#ff4444'}}>
-                {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)}%
+              <span style={{...styles.tickerChange, color: stock.changePercent >= 0 ? '#00ff88' : '#ff4444'}}>
+                {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
               </span>
             </div>
           ))}
@@ -131,6 +150,44 @@ export default function Home() {
 
       {/* Main Content */}
       <main style={styles.mainContent}>
+        {/* Left Sidebar: Watchlist */}
+        <aside style={styles.watchlistSidebar}>
+          <div style={styles.watchlistHeader}>
+            <span style={styles.watchlistTitle}>WATCHLIST</span>
+          </div>
+          <div style={styles.watchlistContent}>
+            {watchlistData.map((stock) => (
+              <div
+                key={stock.symbol}
+                onClick={() => analyzeTicker(stock.symbol)}
+                style={{
+                  ...styles.watchlistItem,
+                  ...(ticker === stock.symbol ? styles.watchlistItemActive : {})
+                }}
+              >
+                <div style={styles.watchlistItemTop}>
+                  <span style={styles.watchlistSymbol}>{stock.symbol}</span>
+                  <span style={{
+                    ...styles.watchlistPrice,
+                    color: stock.change >= 0 ? '#00ff88' : '#ff4444'
+                  }}>
+                    {stock.price.toFixed(2)}
+                  </span>
+                </div>
+                <div style={styles.watchlistItemBottom}>
+                  <span style={styles.watchlistName}>{stock.name}</span>
+                  <span style={{
+                    ...styles.watchlistChange,
+                    color: stock.changePercent >= 0 ? '#00ff88' : '#ff4444'
+                  }}>
+                    {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
         {/* Center: Chart Area */}
         <section style={styles.centerSection}>
           {result && (
@@ -423,7 +480,7 @@ const styles = {
     fontSize: '12px',
   },
   tickerTape: {
-    height: '32px',
+    height: '40px',
     backgroundColor: '#0a0a0a',
     borderBottom: '1px solid #1a1a1a',
     overflow: 'hidden',
@@ -437,21 +494,84 @@ const styles = {
   tickerItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    padding: '0 16px',
+    gap: '10px',
+    padding: '0 20px',
     borderRight: '1px solid #1a1a1a',
-    height: '32px',
+    height: '40px',
   },
   tickerSymbol: {
     fontWeight: 'bold',
     color: '#ffaa00',
-    fontSize: '12px',
+    fontSize: '14px',
   },
   tickerPrice: {
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: 'bold',
   },
   tickerChange: {
+    fontSize: '13px',
+  },
+  watchlistSidebar: {
+    width: '240px',
+    backgroundColor: '#0a0a0a',
+    borderRight: '1px solid #1a1a1a',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  watchlistHeader: {
+    padding: '12px',
+    borderBottom: '1px solid #1a1a1a',
+    backgroundColor: '#000',
+  },
+  watchlistTitle: {
+    fontSize: '11px',
+    fontWeight: 'bold',
+    color: '#666',
+    letterSpacing: '1px',
+  },
+  watchlistContent: {
+    flex: 1,
+    overflowY: 'auto',
+  },
+  watchlistItem: {
+    padding: '12px',
+    borderBottom: '1px solid #1a1a1a',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+  },
+  watchlistItemActive: {
+    backgroundColor: '#1a1a1a',
+    borderLeft: '2px solid #ffaa00',
+  },
+  watchlistItemTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '4px',
+  },
+  watchlistSymbol: {
+    fontWeight: 'bold',
+    fontSize: '13px',
+    color: '#fff',
+  },
+  watchlistPrice: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+  },
+  watchlistItemBottom: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '11px',
+  },
+  watchlistName: {
+    color: '#666',
+    maxWidth: '120px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  watchlistChange: {
     fontSize: '11px',
   },
   mainContent: {
