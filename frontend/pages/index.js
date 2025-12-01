@@ -89,12 +89,16 @@ export default function Home() {
     setChatLoading(true);
 
     try {
-      // Call your Lambda API with the user's query
+      // Extract ticker from user query
+      const tickerMatch = query.toUpperCase().match(/\b([A-Z]{1,5})\b/);
+      const extractedTicker = tickerMatch ? tickerMatch[1] : ticker;
+      
+      // Always request full analysis to ensure technical data is included
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          inputText: query
+          inputText: `Analyze ${extractedTicker} stock with comprehensive analysis including technical and sentiment data`
         }),
       });
 
@@ -105,16 +109,24 @@ export default function Home() {
       
       // Check if there was an error
       if (data.recommendation === 'ERROR' || (data.summary && data.summary.includes('failed'))) {
+        // Extract ticker from query for retry suggestion
+        const tickerMatch = query.match(/\b([A-Z]{1,5})\b/);
+        const suggestedTicker = tickerMatch ? tickerMatch[1] : 'AAPL';
+        
         agentResponse = `⚠️ Analysis failed for "${query}".\n\n`;
-        agentResponse += `Possible causes:\n`;
-        agentResponse += `• Invalid ticker (e.g., "APPL" should be "AAPL")\n`;
-        agentResponse += `• Market data temporarily unavailable\n`;
-        agentResponse += `• API timeout (Lambda cold start)\n\n`;
-        agentResponse += `💡 Try these formats:\n`;
-        agentResponse += `• "Analyze AAPL"\n`;
-        agentResponse += `• "Should I buy NVDA?"\n`;
-        agentResponse += `• "What's MSFT sentiment?"\n\n`;
-        agentResponse += `Or click a stock in the watchlist to analyze it.`;
+        
+        if (query.toLowerCase().includes('sentiment')) {
+          agentResponse += `Sentiment-only queries require Alpha Vantage API.\n\n`;
+          agentResponse += `💡 Try a full analysis instead:\n`;
+          agentResponse += `• "Analyze ${suggestedTicker}"\n`;
+          agentResponse += `• "Should I buy ${suggestedTicker}?"\n\n`;
+        } else {
+          agentResponse += `Possible causes:\n`;
+          agentResponse += `• Invalid ticker symbol\n`;
+          agentResponse += `• Market data temporarily unavailable\n\n`;
+          agentResponse += `💡 Try: "Analyze ${suggestedTicker}"\n\n`;
+        }
+        agentResponse += `Or click a stock in the watchlist.`;
       } else if (data.ticker && data.technical_analysis?.current_price) {
         // If it's a successful stock analysis
         agentResponse = `📊 Analysis for ${data.ticker}:\n\n`;
