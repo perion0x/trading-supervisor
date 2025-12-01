@@ -15,7 +15,7 @@ export default function Home() {
   const messagesEndRef = useRef(null);
 
   const API_URL = 'https://j0hz2ok0kb.execute-api.us-east-1.amazonaws.com/dev/analyze';
-  const WATCHLIST = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'JPM'];
+  const WATCHLIST = ['AAPL', 'NVDA', 'MSFT', 'AMZN', 'JPM', 'XOM', 'LNG', 'NFLX', 'AMD'];
 
   const getPriceDomain = (chartData) => {
     if (!chartData || chartData.length === 0) return ['auto', 'auto'];
