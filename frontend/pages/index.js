@@ -113,29 +113,29 @@ export default function Home() {
         // Use the extracted ticker for retry suggestion
         const suggestedTicker = extractedTicker || 'AAPL';
         
-        agentResponse = `⚠️ Analysis failed for "${query}".\n\n`;
+        agentResponse = `Analysis failed for "${query}".\n\n`;
         
         if (query.toLowerCase().includes('sentiment')) {
           agentResponse += `Sentiment-only queries require Alpha Vantage API.\n\n`;
-          agentResponse += `💡 Try a full analysis instead:\n`;
+          agentResponse += `Try a full analysis instead:\n`;
           agentResponse += `• "Analyze ${suggestedTicker}"\n`;
           agentResponse += `• "Should I buy ${suggestedTicker}?"\n\n`;
         } else {
           agentResponse += `Possible causes:\n`;
           agentResponse += `• Invalid ticker symbol\n`;
           agentResponse += `• Market data temporarily unavailable\n\n`;
-          agentResponse += `💡 Try: "Analyze ${suggestedTicker}"\n\n`;
+          agentResponse += `Try: "Analyze ${suggestedTicker}"\n\n`;
         }
         agentResponse += `Or click a stock in the watchlist.`;
       } else if (data.ticker && data.technical_analysis?.current_price) {
         // If it's a successful stock analysis
-        agentResponse = `📊 Analysis for ${data.ticker}:\n\n`;
-        agentResponse += `💰 Price: $${data.technical_analysis.current_price.toFixed(2)}\n`;
-        agentResponse += `📈 RSI: ${data.technical_analysis.rsi.toFixed(2)} (${data.technical_analysis.rsi_signal})\n`;
-        agentResponse += `📉 24h Change: ${data.technical_analysis.price_change_24h >= 0 ? '+' : ''}$${data.technical_analysis.price_change_24h.toFixed(2)}\n\n`;
-        agentResponse += `🎯 Recommendation: ${data.recommendation} (${Math.round(data.confidence * 100)}% confidence)\n\n`;
-        agentResponse += `💭 Sentiment: ${data.sentiment_analysis?.sentiment || 'N/A'}\n\n`;
-        agentResponse += `📝 ${data.summary}`;
+        agentResponse = `Analysis for ${data.ticker}:\n\n`;
+        agentResponse += `Price: $${data.technical_analysis.current_price.toFixed(2)}\n`;
+        agentResponse += `RSI: ${data.technical_analysis.rsi.toFixed(2)} (${data.technical_analysis.rsi_signal})\n`;
+        agentResponse += `24h Change: ${data.technical_analysis.price_change_24h >= 0 ? '+' : ''}$${data.technical_analysis.price_change_24h.toFixed(2)}\n\n`;
+        agentResponse += `Recommendation: ${data.recommendation} (${Math.round(data.confidence * 100)}% confidence)\n\n`;
+        agentResponse += `Sentiment: ${data.sentiment_analysis?.sentiment || 'N/A'}\n\n`;
+        agentResponse += `${data.summary}`;
       } else if (data.summary) {
         // If it's a general query response
         agentResponse = data.summary;
@@ -152,7 +152,7 @@ export default function Home() {
     } catch (err) {
       const errorMessage = {
         role: 'agent',
-        content: `⚠️ Error: Unable to process your request. ${err.message}`,
+        content: `Error: Unable to process your request. ${err.message}`,
         timestamp: new Date()
       };
       setChatMessages(prev => [...prev, errorMessage]);
